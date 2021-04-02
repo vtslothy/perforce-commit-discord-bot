@@ -1,6 +1,7 @@
 import os
 import subprocess
 import time
+import re
 from discord_webhooks import DiscordWebhooks
 
 class PerforceLogger():
@@ -11,9 +12,13 @@ class PerforceLogger():
         'latest_change': ''
       }
 
+    def get_cl(self, summary):
+      cl = re.findall( "\d+", summary )
+      return cl[0]
+
     def check_p4(self):
       """ Runs the p4 changes command to get the latest commits from the server. """
-      p4_changes = subprocess.Popen('p4 changes -t -m 1 -l', stdout=subprocess.PIPE, shell=True)
+      p4_changes = subprocess.Popen('p4 changes -t -m 1', stdout=subprocess.PIPE, shell=True)
       return p4_changes.stdout.read().decode('ISO-8859-1')
 
     def check_for_changes(self, output):
@@ -25,7 +30,9 @@ class PerforceLogger():
           return ''
 
         else:
-          return output
+          cl = self.get_cl( output )
+          p4_changes = subprocess.Popen('p4 describe -s -m 15 ' + cl, stdout=subprocess.PIPE, shell=True)
+          return p4_changes.stdout.read().decode('ISO-8859-1')
 
       else: 
         return ''
@@ -39,7 +46,7 @@ class PerforceLogger():
         message = DiscordWebhooks(self.webhook_url)
         message.set_content(color=0xc8702a, description='`%s`' % (payload))
         message.set_author(name='Perforce')
-        message.set_footer(text='https://github.com/JamesIves/perforce-commit-discord-bot', ts=True)
+        message.set_footer(text='DiscordBot', ts=True)
         message.send()
 
       else:
@@ -53,4 +60,4 @@ if __name__ == "__main__":
 
   while True:
     logger.post_changes()
-    time.sleep(30.0 - ((time.time() - timer) % 30.0))
+    time.sleep(1.0 - ((time.time() - timer) % 1.0))
